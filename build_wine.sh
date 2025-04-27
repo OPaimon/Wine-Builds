@@ -218,7 +218,7 @@ elif [ "$WINE_BRANCH" = "staging-tkg" ] || [ "$WINE_BRANCH" = "staging-tkg-ntsyn
 	fi
 
 	WINE_VERSION="$(cat wine/VERSION | tail -c +14)"
-	BUILD_NAME="${WINE_VERSION}"-"${WINE_BRANCH}"
+	BUILD_NAME="spritz-$WINE_VERSION-$WINE_BRANCH-aagl"
 elif [ "$WINE_BRANCH" = "proton" ]; then
 	if [ -z "${PROTON_BRANCH}" ]; then
 		git clone https://github.com/ValveSoftware/wine
@@ -299,6 +299,15 @@ if [ ! -d wine ]; then
 fi
 
 cd wine || exit 1
+
+# Applying patches (fails if no patches are in the folder)
+if [ -d "$scriptdir"/patches/ ]; then
+	for p in "$scriptdir"/patches/*.patch; do
+		echo "Applying patch $p.."
+		patch -Np1 -i "$p" || (echo "Applying patch $p failed.." && exit 1)
+	done
+fi
+
 dlls/winevulkan/make_vulkan
 tools/make_requests
 tools/make_specfiles
