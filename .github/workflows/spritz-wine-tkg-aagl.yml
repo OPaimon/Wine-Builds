@@ -1,9 +1,12 @@
-name: Proton Experimental CI
+name: Spritz-Wine-TkG-AAGL
 
 on:
   schedule:
-    - cron:  '0 0 1,17 * *'
+    - cron: '0 0 */14 * *'
   workflow_dispatch:
+  push:
+    tags:
+      - "wine-tkg-aagl*"
 
 jobs:
   build:
@@ -15,18 +18,27 @@ jobs:
         id: download-artifact
         uses: dawidd6/action-download-artifact@v3
         with:
-          workflow: bootstraps.yml
+          workflow: bootstraps-aagl.yml
           workflow_conclusion: success
           path: /opt
-      - name: Build Proton
+      - name: Build Wine
         run: |
           sudo apt update
           sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf
           sudo tar -C /opt -xpf /opt/Bootstraps/bootstraps.tar.xz
           chmod +x build_wine.sh
-          WINE_BRANCH=proton PROTON_BRANCH=bleeding-edge ./build_wine.sh
+          export WINE_VERSION="latest"
+          export EXPERIMENTAL_WOW64="true"
+          WINE_BRANCH=staging-tkg ./build_wine.sh
           sha256sum *.tar.xz
       - uses: actions/upload-artifact@v4
         with:
-          name: Proton Experimental
+          name: Spritz-Wine-TkG-AAGL
           path: ./*.tar.xz
+      - name: Release
+        uses: softprops/action-gh-release@v2.2.1
+        if: github.ref_type == 'tag'
+        with:
+          files: ./*.tar.xz
+          name: "Spritz-Wine-TkG-AAGL-${{ github.ref_name }}"
+          make_latest: true
