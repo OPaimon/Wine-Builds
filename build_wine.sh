@@ -33,6 +33,9 @@ export WINE_VERSION="${WINE_VERSION:-latest}"
 # Available branches: vanilla, staging, proton, staging-tkg, staging-tkg-ntsync
 export WINE_BRANCH="${WINE_BRANCH:-staging}"
 
+# Keeping track of the releases versions
+export RELEASE_VERSION="${RELEASE_VERSION:-2}"
+
 # Available proton branches: proton_3.7, proton_3.16, proton_4.2, proton_4.11
 # proton_5.0, proton_5.13, experimental_5.13, proton_6.3, experimental_6.3
 # proton_7.0, experimental_7.0, proton_8.0, experimental_8.0, experimental_9.0
@@ -218,7 +221,7 @@ elif [ "$WINE_BRANCH" = "staging-tkg" ] || [ "$WINE_BRANCH" = "staging-tkg-ntsyn
 	fi
 
 	WINE_VERSION="$(cat wine/VERSION | tail -c +14)"
-	BUILD_NAME="spritz-$WINE_VERSION-$WINE_BRANCH-aagl"
+	BUILD_NAME="spritz-$WINE_VERSION-$RELEASE_VERSION-$WINE_BRANCH-aagl"
 elif [ "$WINE_BRANCH" = "proton" ]; then
 	if [ -z "${PROTON_BRANCH}" ]; then
 		git clone https://github.com/ValveSoftware/wine
