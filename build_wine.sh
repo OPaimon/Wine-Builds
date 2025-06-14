@@ -34,7 +34,7 @@ export WINE_VERSION="${WINE_VERSION:-latest}"
 export WINE_BRANCH="${WINE_BRANCH:-staging}"
 
 # Keeping track of the releases versions
-export RELEASE_VERSION="${RELEASE_VERSION:-2}"
+export RELEASE_VERSION="${RELEASE_VERSION:-1}"
 
 # Available proton branches: proton_3.7, proton_3.16, proton_4.2, proton_4.11
 # proton_5.0, proton_5.13, experimental_5.13, proton_6.3, experimental_6.3
