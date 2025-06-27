@@ -22,6 +22,11 @@ if [ $EUID = 0 ] && [ -z "$ALLOW_ROOT" ]; then
 	exit 1
 fi
 
+# Read current build config. from a different file
+set -a
+source "$(pwd)/build-version.cfg"
+set +a
+
 # Wine version to compile.
 # You can set it to "latest" to compile the latest available version.
 # You can also set it to "git" to compile the latest git revision.
@@ -219,6 +224,19 @@ elif [ "$WINE_BRANCH" = "staging-tkg" ] || [ "$WINE_BRANCH" = "staging-tkg-ntsyn
 			git clone https://github.com/Kron4ek/wine-tkg wine -b ntsync
 		fi
 	fi
+
+	# Automate getting commit hash for all branches from WINE_VERSION to build specific versions
+	cd wine || exit 1
+	WINE_COMMIT=$(git log --pretty=format:"%H %s" | grep -F "Update to $WINE_VERSION" | head -n1 | awk '{print $1}')
+	
+	# Fail if commit isn't found in some extra branch (ntsync/wow64)
+	if [ -z "$WINE_COMMIT" ]; then
+    	echo "No commit found with WINE_VERSION: $WINE_VERSION, exiting.."
+    	exit 1
+	fi
+	
+	git checkout "$WINE_COMMIT"
+	cd .. || exit 1
 
 	WINE_VERSION="$(cat wine/VERSION | tail -c +14)"
 	BUILD_NAME="spritz-$WINE_VERSION-$RELEASE_VERSION-$WINE_BRANCH-aagl"
