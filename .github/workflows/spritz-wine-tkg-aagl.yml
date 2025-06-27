@@ -76,6 +76,7 @@ jobs:
         with:
           name: Spritz-Wine-TkG-AAGL-ntsync
           path: artifacts
+        continue-on-error: true
 
       - name: Extract version from tag for Release
         id: extract_version
