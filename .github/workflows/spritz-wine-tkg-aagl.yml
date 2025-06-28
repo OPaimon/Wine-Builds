@@ -1,8 +1,6 @@
 name: Spritz-Wine-TkG-AAGL
 
 on:
-  schedule:
-    - cron: '0 0 */14 * *'
   workflow_dispatch:
   push:
     tags:
@@ -10,82 +8,63 @@ on:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        config:
+          - name: Spritz-Wine-TkG-AAGL
+            branch: staging-tkg
+            allow_fail: false
+          - name: Spritz-Wine-TkG-AAGL-ntsync
+            branch: staging-tkg-ntsync
+            allow_fail: true
+
     runs-on: ubuntu-22.04
+    continue-on-error: ${{ matrix.config.allow_fail }}
 
     steps:
       - uses: actions/checkout@v4
+
       - name: Download artifact
         uses: dawidd6/action-download-artifact@v3
         with:
           workflow: bootstraps-aagl.yml
           workflow_conclusion: success
           path: /opt
+
       - name: Build Wine
         run: |
           sudo apt update
-          sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf
+          sudo apt install -y debootstrap perl git wget xz-utils bubblewrap autoconf
           sudo tar -C /opt -xpf /opt/Bootstraps/bootstraps.tar.xz
           chmod +x build_wine.sh
           export EXPERIMENTAL_WOW64="true"
-          WINE_BRANCH=staging-tkg ./build_wine.sh
+          WINE_BRANCH=${{ matrix.config.branch }} ./build_wine.sh
           sha256sum *.tar.xz
-      - uses: actions/upload-artifact@v4
-        with:
-          name: Spritz-Wine-TkG-AAGL
-          path: ./*.tar.xz
 
-  build-ntsync:
-    runs-on: ubuntu-22.04
-    continue-on-error: true
-    steps:
-      - uses: actions/checkout@v4
-      - name: Download artifact
-        uses: dawidd6/action-download-artifact@v3
-        with:
-          workflow: bootstraps-aagl.yml
-          workflow_conclusion: success
-          path: /opt
-      - name: Build Wine with NTsync
-        run: |
-          sudo apt update
-          sudo apt install debootstrap perl git wget xz-utils bubblewrap autoconf
-          sudo tar -C /opt -xpf /opt/Bootstraps/bootstraps.tar.xz
-          chmod +x build_wine.sh
-          export EXPERIMENTAL_WOW64="true"
-          WINE_BRANCH=staging-tkg-ntsync ./build_wine.sh
-          sha256sum *.tar.xz
       - uses: actions/upload-artifact@v4
         with:
-          name: Spritz-Wine-TkG-AAGL-ntsync
+          name: ${{ matrix.config.name }}
           path: ./*.tar.xz
 
   release:
     runs-on: ubuntu-22.04
-    needs: [build, build-ntsync]
+    needs: [build]
     if: github.ref_type == 'tag'
 
     steps:
-      - name: Download staging-tkg artifact
+      - name: Download all artifacts
         uses: actions/download-artifact@v4
         with:
-          name: Spritz-Wine-TkG-AAGL
           path: artifacts
 
-      - name: Download staging-tkg-ntsync artifact
-        uses: actions/download-artifact@v4
-        with:
-          name: Spritz-Wine-TkG-AAGL-ntsync
-          path: artifacts
-        continue-on-error: true
-
-      - name: Extract version from tag for Release
+      - name: Extract version from tag
         id: extract_version
         run: |
           TAG="${{ github.ref_name }}"
           VERSION=$(echo "$TAG" | sed -n 's/^wine-tkg-aagl-\(v[0-9]\+\.[0-9]\+-[0-9]\+\)$/\1/p')
           echo "version=$VERSION" >> $GITHUB_OUTPUT
 
-      - name: Release
+      - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.2.1
         with:
           files: artifacts/*.tar.xz
