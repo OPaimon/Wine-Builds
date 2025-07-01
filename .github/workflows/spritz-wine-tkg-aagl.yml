@@ -84,6 +84,6 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2.2.1
         with:
-          files: artifacts/*.tar.xz
+          files: artifacts/**/*.tar.xz
           name: "Spritz-Wine-TkG-AAGL-${{ steps.extract_version.outputs.version }}"
           make_latest: true
