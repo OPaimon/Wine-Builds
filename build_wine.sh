@@ -27,6 +27,10 @@ set -a
 source "$(pwd)/build-version.cfg"
 set +a
 
+## -------------------------------------------------------
+## 					Wine-Builds settings
+## -------------------------------------------------------
+
 # Wine version to compile.
 # You can set it to "latest" to compile the latest available version.
 # You can also set it to "git" to compile the latest git revision.
@@ -86,74 +90,38 @@ export DO_NOT_COMPILE="false"
 # Make sure that ccache is installed before enabling this.
 export USE_CCACHE="${USE_CCACHE:-false}"
 
-export WINE_BUILD_OPTIONS="--without-ldap --without-oss --disable-winemenubuilder --disable-win16 --disable-tests"
-
 # A temporary directory where the Wine source code will be stored.
 # Do not set this variable to an existing non-empty directory!
 # This directory is removed and recreated on each script run.
 export BUILD_DIR="${HOME}"/build_wine
-
-# Change these paths to where your Ubuntu bootstraps reside
-export BOOTSTRAP_X64=/opt/chroots/bionic64_chroot
-export BOOTSTRAP_X32=/opt/chroots/bionic32_chroot
-
 export scriptdir="$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")"
 
-export CC="gcc-11"
-export CXX="g++-11"
+## ------------------------------------------------------------
+## 						BOOTSTRAPS SETUP
+## ------------------------------------------------------------
 
-export CROSSCC_X32="i686-w64-mingw32-gcc"
-export CROSSCXX_X32="i686-w64-mingw32-g++"
-export CROSSCC_X64="x86_64-w64-mingw32-gcc"
-export CROSSCXX_X64="x86_64-w64-mingw32-g++"
+# Change these paths to where your Ubuntu bootstraps reside
+export BOOTSTRAP_X64=/opt/chroots/focal_chroot
+export BOOTSTRAP_PATH="$BOOTSTRAP_X64"
 
-export CFLAGS_X32="-march=i686 -msse2 -mfpmath=sse -O2 -ftree-vectorize"
-export CFLAGS_X64="-march=x86-64 -msse3 -mfpmath=sse -O2 -ftree-vectorize"
-export LDFLAGS="-Wl,-O1,--sort-common,--as-needed"
-
-export CROSSCFLAGS_X32="${CFLAGS_X32}"
-export CROSSCFLAGS_X64="${CFLAGS_X64}"
-export CROSSLDFLAGS="${LDFLAGS}"
-
-if [ "$USE_CCACHE" = "true" ]; then
-	export CC="ccache ${CC}"
-	export CXX="ccache ${CXX}"
-
-	export i386_CC="ccache ${CROSSCC_X32}"
-	export x86_64_CC="ccache ${CROSSCC_X64}"
-
-	export CROSSCC_X32="ccache ${CROSSCC_X32}"
-	export CROSSCXX_X32="ccache ${CROSSCXX_X32}"
-	export CROSSCC_X64="ccache ${CROSSCC_X64}"
-	export CROSSCXX_X64="ccache ${CROSSCXX_X64}"
-
-	if [ -z "${XDG_CACHE_HOME}" ]; then
-		export XDG_CACHE_HOME="${HOME}"/.cache
-	fi
-
-	mkdir -p "${XDG_CACHE_HOME}"/ccache
-	mkdir -p "${HOME}"/.ccache
-fi
-
-build_with_bwrap () {
-	if [ "${1}" = "32" ]; then
-		BOOTSTRAP_PATH="${BOOTSTRAP_X32}"
-	else
-		BOOTSTRAP_PATH="${BOOTSTRAP_X64}"
-	fi
-
-	if [ "${1}" = "32" ] || [ "${1}" = "64" ]; then
-		shift
-	fi
-
+_bwrap () {
     bwrap --ro-bind "${BOOTSTRAP_PATH}" / --dev /dev --ro-bind /sys /sys \
 		  --proc /proc --tmpfs /tmp --tmpfs /home --tmpfs /run --tmpfs /var \
 		  --tmpfs /mnt --tmpfs /media --bind "${BUILD_DIR}" "${BUILD_DIR}" \
 		  --bind-try "${XDG_CACHE_HOME}"/ccache "${XDG_CACHE_HOME}"/ccache \
 		  --bind-try "${HOME}"/.ccache "${HOME}"/.ccache \
-		  --setenv PATH "/opt/mingw/x86_64/bin:/opt/mingw/i686/bin:/usr/local/bin:/bin:/sbin:/usr/bin:/usr/sbin" \
-			"$@"
+		  --setenv PATH "/usr/local/llvm-mingw/bin:/bin:/sbin:/usr/bin:/usr/sbin" \
+		  --setenv LC_ALL en_US.UTF-8 \
+		  --setenv LANGUAGE en_US.UTF-8 \
+		  "$@"
+			
 }
+
+if [ ! -d "${BOOTSTRAP_X64}" ] ; then
+	clear
+	echo "Ubuntu Bootstrap is required for compilation!"
+	exit 1
+fi
 
 if ! command -v git 1>/dev/null; then
 	echo "Please install git and run the script again"
@@ -174,6 +142,51 @@ if ! command -v xz 1>/dev/null; then
 	echo "Please install xz and run the script again"
 	exit 1
 fi
+
+## ------------------------------------------------------------
+## 						COMPILER SETUP
+## ------------------------------------------------------------
+
+export CC="gcc"
+export CXX="g++"
+
+export CROSSCC_X32="i686-w64-mingw32-gcc"
+export CROSSCXX_X32="i686-w64-mingw32-g++"
+export CROSSCC_X64="x86_64-w64-mingw32-gcc"
+export CROSSCXX_X64="x86_64-w64-mingw32-g++"
+
+export CFLAGS="-march=x86-64 -mtune=generic -O2 -ftree-vectorize"
+export CROSSCFLAGS="-march=x86-64 -mtune=generic -O2 -ftree-vectorize"
+export LDFLAGS="-Wl,-O1,--sort-common,--as-needed"
+export CROSSLDFLAGS="${LDFLAGS}"
+
+## ------------------------------------------------------------
+## 						CCACHE SETUP
+## ------------------------------------------------------------
+
+if [ "$USE_CCACHE" = "true" ]; then
+	export CC="ccache ${CC}"
+	export CXX="ccache ${CXX}"
+
+	export i386_CC="ccache ${CROSSCC_X32}"
+	export x86_64_CC="ccache ${CROSSCC_X64}"
+	export CROSSCC="ccache ${CROSSCC}"
+	export CROSSCC_X32="ccache ${CROSSCC_X32}"
+	export CROSSCXX_X32="ccache ${CROSSCXX_X32}"
+	export CROSSCC_X64="ccache ${CROSSCC_X64}"
+	export CROSSCXX_X64="ccache ${CROSSCXX_X64}"
+
+	if [ -z "${XDG_CACHE_HOME}" ]; then
+		export XDG_CACHE_HOME="${HOME}"/.cache
+	fi
+
+	mkdir -p "${XDG_CACHE_HOME}"/ccache
+	mkdir -p "${HOME}"/.ccache
+fi
+
+## ------------------------------------------------------------
+## 						WINE SETUP
+## ------------------------------------------------------------
 
 # Replace the "latest" parameter with the actual latest Wine version
 if [ "${WINE_VERSION}" = "latest" ] || [ -z "${WINE_VERSION}" ]; then
@@ -297,9 +310,9 @@ else
 
 		cd wine || exit 1
 		if [ -n "${STAGING_ARGS}" ]; then
-			"${staging_patcher[@]}" ${STAGING_ARGS}
+			_bwrap "${staging_patcher[@]}" ${STAGING_ARGS}
 		else
-			"${staging_patcher[@]}" --all
+			_bwrap "${staging_patcher[@]}" --all
 		fi
 
 		if [ $? -ne 0 ]; then
@@ -312,6 +325,50 @@ else
 	fi
 fi
 
+## ------------------------------------------------------------
+## 						BUILD SETUP
+## ------------------------------------------------------------
+
+export WINE_BUILD_OPTIONS=(
+        --prefix="${BUILD_DIR}/${BUILD_OUT_TMP_DIR}"
+        --disable-tests
+        --disable-winemenubuilder
+        --disable-win16
+        --with-x
+        --with-gstreamer
+        --with-wayland
+        --without-oss
+        --without-coreaudio
+        --without-cups
+        --without-sane
+        --without-gphoto
+        --without-pcsclite
+        --without-pcap
+        --without-capi
+        --without-v4l2
+        --without-netapi
+        --disable-msv1_0
+    )
+
+# Options appended only to the 64bit build
+if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
+	WINE_64_BUILD_OPTIONS=(
+		--enable-archs="x86_64,i386"
+		--libdir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib
+	)
+else
+	WINE_64_BUILD_OPTIONS=(
+		--enable-win64
+		--libdir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib
+	)
+fi
+
+# Options appended only to the 32bit build
+WINE_32_BUILD_OPTIONS=(
+	--libdir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib
+    --with-wine64="${BUILD_DIR}"/build64
+)
+
 if [ ! -d wine ]; then
 	clear
 	echo "No Wine source code found!"
@@ -319,20 +376,26 @@ if [ ! -d wine ]; then
 	exit 1
 fi
 
+BUILD_OUT_TMP_DIR=wine-"$BUILD_NAME"-amd64
 cd wine || exit 1
 
-# Applying patches (fails if no patches are in the folder)
-if [ -d "$scriptdir"/patches/ ]; then
-	for p in "$scriptdir"/patches/*.patch; do
-		echo "Applying patch $p.."
-		patch -Np1 -i "$p" || (echo "Applying patch $p failed.." && exit 1)
-	done
-fi
+# Applying custom patches
+patches_dir="$scriptdir/patches"
+for i in $(find "$patches_dir" -type f -regex ".*\.patch" | sort); do
+    [ ! -f "$i" ] && continue
+    echo "Applying custom patch '$i'" 
+    patch -Np1 -i "$i" >> $scriptdir/patches.log || Error "Applying patch '$i' failed, read at: $scriptdir/patches.log"
+done
+
+## ------------------------------------------------------------
+## 						WINE BUILDING
+## ------------------------------------------------------------
 
 dlls/winevulkan/make_vulkan
 tools/make_requests
 tools/make_specfiles
-autoreconf -f
+_bwrap autoreconf -f
+
 cd "${BUILD_DIR}" || exit 1
 
 if [ "${DO_NOT_COMPILE}" = "true" ]; then
@@ -342,60 +405,43 @@ if [ "${DO_NOT_COMPILE}" = "true" ]; then
 	exit
 fi
 
-if ! command -v bwrap 1>/dev/null; then
-	echo "Bubblewrap is not installed on your system!"
-	echo "Please install it and run the script again"
-	exit 1
-fi
-
-if [ ! -d "${BOOTSTRAP_X64}" ] || [ ! -d "${BOOTSTRAP_X32}" ]; then
-	clear
-	echo "Bootstraps are required for compilation!"
-	exit 1
-fi
-
-BWRAP64="build_with_bwrap 64"
-BWRAP32="build_with_bwrap 32"
-
+export PKG_CONFIG_LIBDIR=/usr/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/x86_64-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig
+export PKG_CONFIG_PATH=$PKG_CONFIG_LIBDIR
+export x86_64_CC="${CROSSCC_X64}"
 export CROSSCC="${CROSSCC_X64}"
-export CROSSCXX="${CROSSCXX_X64}"
-export CFLAGS="${CFLAGS_X64}"
-export CXXFLAGS="${CFLAGS_X64}"
-export CROSSCFLAGS="${CROSSCFLAGS_X64}"
-export CROSSCXXFLAGS="${CROSSCFLAGS_X64}"
 
+rm -rf "${BUILD_DIR}"/build64 || true
 mkdir "${BUILD_DIR}"/build64
-cd "${BUILD_DIR}"/build64 || exit
-${BWRAP64} "${BUILD_DIR}"/wine/configure --enable-win64 ${WINE_BUILD_OPTIONS} --prefix "${BUILD_DIR}"/wine-"${BUILD_NAME}"-amd64
-${BWRAP64} make -j$(nproc) install
+cd "${BUILD_DIR}"/build64 || exit 1
+_bwrap "${BUILD_DIR}"/wine/configure \
+			"${WINE_BUILD_OPTIONS[@]}" \
+			"${WINE_64_BUILD_OPTIONS[@]}"
 
-export CROSSCC="${CROSSCC_X32}"
-export CROSSCXX="${CROSSCXX_X32}"
-export CFLAGS="${CFLAGS_X32}"
-export CXXFLAGS="${CFLAGS_X32}"
-export CROSSCFLAGS="${CROSSCFLAGS_X32}"
-export CROSSCXXFLAGS="${CROSSCFLAGS_X32}"
+_bwrap make -j$(($(nproc) + 1)) || Error "Wine 64-bit build failed, check logs"
 
-mkdir "${BUILD_DIR}"/build32-tools
-cd "${BUILD_DIR}"/build32-tools || exit
-PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/i386-linux-gnu/pkgconfig ${BWRAP32} "${BUILD_DIR}"/wine/configure ${WINE_BUILD_OPTIONS} --prefix "${BUILD_DIR}"/wine-"${BUILD_NAME}"-x86
-${BWRAP32} make -j$(nproc) install
+# Only build Wine-32 if not WoW64
+if ! [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
 
-export CFLAGS="${CFLAGS_X64}"
-export CXXFLAGS="${CFLAGS_X64}"
-export CROSSCFLAGS="${CROSSCFLAGS_X64}"
-export CROSSCXXFLAGS="${CROSSCFLAGS_X64}"
+	export PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/i386-linux-gnu/pkgconfig:/usr/local/i386/lib/i386-linux-gnu/pkgconfig:${LLVM_MINGW_PATH}/i686-w64-mingw32/lib/pkgconfig
+	export PKG_CONFIG_PATH=$PKG_CONFIG_LIBDIR
+	export i386_CC="${CROSSCC_X32}"
+	export CROSSCC="${CROSSCC_X32}"
 
-mkdir "${BUILD_DIR}"/build32
-cd "${BUILD_DIR}"/build32 || exit
-PKG_CONFIG_LIBDIR=/usr/lib/i386-linux-gnu/pkgconfig:/usr/local/lib/pkgconfig:/usr/local/lib/i386-linux-gnu/pkgconfig ${BWRAP32} "${BUILD_DIR}"/wine/configure --with-wine64="${BUILD_DIR}"/build64 --with-wine-tools="${BUILD_DIR}"/build32-tools ${WINE_BUILD_OPTIONS} --prefix "${BUILD_DIR}"/wine-${BUILD_NAME}-amd64
-${BWRAP32} make -j$(nproc) install
+	rm -rf "${BUILD_DIR}"/build32 || true
+	mkdir "${BUILD_DIR}"/build32
+	cd "${BUILD_DIR}"/build32 || exit 1
+	_bwrap "${BUILD_DIR}"/wine/configure \
+				"${WINE_BUILD_OPTIONS[@]}" \
+				"${WINE_32_BUILD_OPTIONS[@]}"
+
+	_bwrap make -j$(($(nproc) + 1)) || Error "Wine 32-bit build failed, check logs"
+fi
 
 echo
 echo "Compilation complete"
 echo "Creating and compressing archives..."
 
-cd "${BUILD_DIR}" || exit
+cd "${BUILD_DIR}" || exit 1
 
 if touch "${scriptdir}"/write_test; then
 	rm -f "${scriptdir}"/write_test
@@ -406,33 +452,47 @@ fi
 
 export XZ_OPT="-9"
 
-if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
-	mv wine-${BUILD_NAME}-amd64 wine-${BUILD_NAME}-amd64-wow64
+if [ -d "$BUILD_DIR" ]; then
 
-	builds_list="wine-${BUILD_NAME}-amd64-wow64"
-else
-	builds_list="wine-${BUILD_NAME}-x86 wine-${BUILD_NAME}-amd64"
+	if ! [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
+		echo "Packaging Wine-32..."
+		cd "${BUILD_DIR}"/build32 || exit 1
+		_bwrap make -j$(($(nproc) + 1)) \
+		prefix="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}" \
+		libdir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib \
+		dlldir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib/wine install-lib
+	fi
+
+	echo "Packaging Wine-64..."
+	cd "${BUILD_DIR}"/build64 || exit 1
+	_bwrap make -j$(($(nproc) + 1))  \
+	prefix="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}" \
+	libdir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib \
+	dlldir="${BUILD_DIR}"/"${BUILD_OUT_TMP_DIR}"/lib/wine install-lib
+
+	echo "Stripping unneeded symbols from libraries..."
+    find "${BUILD_DIR}/${BUILD_OUT_TMP_DIR}/lib/" \
+		-type f '(' -iname '*.a' -o -iname '*.dll' -o -iname '*.so' -o -iname '*.sys' -o -iname '*.drv' -o -iname '*.exe' ')' \
+		-print0 | xargs -0 strip -s 2>/dev/null || true
 fi
 
-for build in ${builds_list}; do
-	if [ -d "${build}" ]; then
-		if [ -f wine/wine-tkg-config.txt ]; then
-			cp wine/wine-tkg-config.txt "${build}"
-		fi
+build="${BUILD_OUT_TMP_DIR}"
+cd "${BUILD_DIR}" || exit 1
 
-		if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
-  			if [ -f "${build}"/bin/wine64 ]; then
-				rm "${build}"/bin/wine "${build}"/bin/wine-preloader
-				cp "${build}"/bin/wine64 "${build}"/bin/wine
-    			else
-       				rm "${build}"/lib/wine/i386-unix/wine "${build}"/lib/wine/i386-unix/wine-preloader
-	   		fi
-		fi
+if [ "${EXPERIMENTAL_WOW64}" = "true" ]; then
+	mv "${build}" "${build}-wow64"
+	build="${build}-wow64"	
+fi
 
-		tar -Jcf "${build}".tar.xz "${build}"
-		mv "${build}".tar.xz "${result_dir}"
+if [ -d "${build}" ]; then
+	if [ -f wine/wine-tkg-config.txt ]; then
+		cp wine/wine-tkg-config.txt "${build}"
 	fi
-done
+
+	tar -Jcf "${build}".tar.xz "${build}"
+	mv "${build}".tar.xz "${result_dir}"
+fi
+
 
 rm -rf "${BUILD_DIR}"
 
