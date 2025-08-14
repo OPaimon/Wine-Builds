@@ -1,19 +1,19 @@
-From e0fc595268a421a4ef4a33dd609739220cf6a0da Mon Sep 17 00:00:00 2001
+From d0eee8a7ec74f370df43f342a8b2977f99e7cb40 Mon Sep 17 00:00:00 2001
 From: NelloKudo <marshnelloosu@gmail.com>
-Date: Tue, 12 Aug 2025 14:15:03 +0200
+Date: Thu, 14 Aug 2025 14:18:26 +0200
 Subject: [PATCH] HACK: ws2_32: Block first internet connection for some games
 
 Fixes launch issues/high CPU usage, can be disabled in-case of
 various issues with WINE_DISABLE_DISCONNECT=1.
 ---
- dlls/ws2_32/socket.c | 30 ++++++++++++++++++++++++++++++
- 1 file changed, 30 insertions(+)
+ dlls/ws2_32/socket.c | 31 +++++++++++++++++++++++++++++++
+ 1 file changed, 31 insertions(+)
 
 diff --git a/dlls/ws2_32/socket.c b/dlls/ws2_32/socket.c
-index d4223e93bd1..bb282b66936 100644
+index d4223e93bd1..3030d8df6bb 100644
 --- a/dlls/ws2_32/socket.c
 +++ b/dlls/ws2_32/socket.c
-@@ -1262,6 +1262,24 @@ int WINAPI closesocket( SOCKET s )
+@@ -1262,6 +1262,25 @@ int WINAPI closesocket( SOCKET s )
      return 0;
  }
  
@@ -29,6 +29,7 @@ index d4223e93bd1..bb282b66936 100644
 +        if ((p = wcsrchr(name, '\\')))
 +            name = p + 1;
 +        ret = (!wcsicmp(name, L"GenshinImpact.exe") ||
++               !wcsicmp(name, L"StarRail.exe") ||
 +               !wcsicmp(name, L"YuanShen.exe") ||
 +               !wcsicmp(name, L"ZenlessZoneZero.exe"));
 +        cache = ret;
@@ -38,7 +39,7 @@ index d4223e93bd1..bb282b66936 100644
  
  /***********************************************************************
   *      connect   (ws2_32.4)
-@@ -1272,6 +1290,18 @@ int WINAPI connect( SOCKET s, const struct sockaddr *addr, int len )
+@@ -1272,6 +1291,18 @@ int WINAPI connect( SOCKET s, const struct sockaddr *addr, int len )
      IO_STATUS_BLOCK io;
      HANDLE sync_event;
      NTSTATUS status;
