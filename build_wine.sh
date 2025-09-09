@@ -304,6 +304,8 @@ else
 			fi
 		fi
 
+		BUILD_NAME="spritz-$WINE_VERSION-$RELEASE_VERSION-tkg-aagl"
+
 		if [ -f wine-staging-"${WINE_VERSION}"/patches/patchinstall.sh ]; then
 			staging_patcher=("${BUILD_DIR}"/wine-staging-"${WINE_VERSION}"/patches/patchinstall.sh
 							DESTDIR="${BUILD_DIR}"/wine)

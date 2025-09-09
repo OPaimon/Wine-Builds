@@ -12,11 +12,8 @@ jobs:
       matrix:
         config:
           - name: Spritz-Wine-TkG-AAGL
-            branch: staging-tkg
+            branch: staging
             allow_fail: false
-          - name: Spritz-Wine-TkG-AAGL-ntsync
-            branch: staging-tkg-ntsync
-            allow_fail: true
 
     runs-on: ubuntu-22.04
     continue-on-error: ${{ matrix.config.allow_fail }}
