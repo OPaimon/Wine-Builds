@@ -155,10 +155,13 @@ export CROSSCXX_X32="i686-w64-mingw32-g++"
 export CROSSCC_X64="x86_64-w64-mingw32-gcc"
 export CROSSCXX_X64="x86_64-w64-mingw32-g++"
 
-export CFLAGS="-march=x86-64 -mtune=generic -O2 -ftree-vectorize"
-export CROSSCFLAGS="-march=x86-64 -mtune=generic -O2 -ftree-vectorize"
-export LDFLAGS="-Wl,-O1,--sort-common,--as-needed"
-export CROSSLDFLAGS="${LDFLAGS}"
+export CFLAGS="-march=nocona -mtune=core-avx2 -pipe -O2 \
+               -fno-strict-aliasing -fwrapv -mfpmath=sse \
+               -D_GNU_SOURCE -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 \
+               -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -DNDEBUG -D_NDEBUG"
+export CROSSCFLAGS="${CFLAGS}"
+export LDFLAGS="${CFLAGS} -Wl,-O1,--sort-common,--as-needed"
+export CROSSLDFLAGS="${CFLAGS} -Wl,-O1,--sort-common,--as-needed,--file-alignment=4096"
 
 ## ------------------------------------------------------------
 ## 						CCACHE SETUP
