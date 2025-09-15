@@ -157,11 +157,11 @@ export CROSSCXX_X64="x86_64-w64-mingw32-g++"
 
 export CFLAGS="-march=nocona -mtune=core-avx2 -pipe -O2 \
                -fno-strict-aliasing -fwrapv -mfpmath=sse \
-               -D_GNU_SOURCE -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 \
-               -U_FORTIFY_SOURCE -D_FORTIFY_SOURCE=0 -DNDEBUG -D_NDEBUG"
+               -D_TIME_BITS=64 -D_FILE_OFFSET_BITS=64 \
+			   -DNDEBUG -D_NDEBUG"
 export CROSSCFLAGS="${CFLAGS}"
-export LDFLAGS="${CFLAGS} -Wl,-O1,--sort-common,--as-needed"
-export CROSSLDFLAGS="${CFLAGS} -Wl,-O1,--sort-common,--as-needed,--file-alignment=4096"
+export LDFLAGS="-Wl,-O1,--sort-common,--as-needed"
+export CROSSLDFLAGS="${LDFLAGS}"
 
 ## ------------------------------------------------------------
 ## 						CCACHE SETUP
@@ -315,9 +315,9 @@ else
 
 		cd wine || exit 1
 		if [ -n "${STAGING_ARGS}" ]; then
-			_bwrap "${staging_patcher[@]}" ${STAGING_ARGS}
+			_bwrap "${staging_patcher[@]}" ${STAGING_ARGS} --no-autoconf
 		else
-			_bwrap "${staging_patcher[@]}" --all
+			_bwrap "${staging_patcher[@]}" --all --no-autoconf
 		fi
 
 		if [ $? -ne 0 ]; then
@@ -389,7 +389,7 @@ patches_dir="$scriptdir/patches"
 for i in $(find "$patches_dir" -type f -regex ".*\.patch" | sort); do
     [ ! -f "$i" ] && continue
     echo "Applying custom patch '$i'" 
-    patch -Np1 -i "$i" >> $scriptdir/patches.log || Error "Applying patch '$i' failed, read at: $scriptdir/patches.log"
+    patch -Np1 -i "$i" >> $scriptdir/patches.log || { echo "Failed to apply patches, check $scriptdir/patches.log"; exit 1; }
 done
 
 ## ------------------------------------------------------------
