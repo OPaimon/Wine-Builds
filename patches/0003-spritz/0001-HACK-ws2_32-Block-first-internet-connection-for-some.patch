@@ -1,4 +1,4 @@
-From d0eee8a7ec74f370df43f342a8b2977f99e7cb40 Mon Sep 17 00:00:00 2001
+From 6684c3435e394bb4e698fc573041ab9686396d5b Mon Sep 17 00:00:00 2001
 From: NelloKudo <marshnelloosu@gmail.com>
 Date: Thu, 14 Aug 2025 14:18:26 +0200
 Subject: [PATCH] HACK: ws2_32: Block first internet connection for some games
@@ -6,14 +6,14 @@ Subject: [PATCH] HACK: ws2_32: Block first internet connection for some games
 Fixes launch issues/high CPU usage, can be disabled in-case of
 various issues with WINE_DISABLE_DISCONNECT=1.
 ---
- dlls/ws2_32/socket.c | 31 +++++++++++++++++++++++++++++++
- 1 file changed, 31 insertions(+)
+ dlls/ws2_32/socket.c | 36 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 36 insertions(+)
 
 diff --git a/dlls/ws2_32/socket.c b/dlls/ws2_32/socket.c
-index d4223e93bd1..3030d8df6bb 100644
+index d4223e93bd1..5538069980a 100644
 --- a/dlls/ws2_32/socket.c
 +++ b/dlls/ws2_32/socket.c
-@@ -1262,6 +1262,25 @@ int WINAPI closesocket( SOCKET s )
+@@ -1262,6 +1262,30 @@ int WINAPI closesocket( SOCKET s )
      return 0;
  }
  
@@ -24,22 +24,27 @@ index d4223e93bd1..3030d8df6bb 100644
 +    if (ret == -1)
 +    {
 +        const WCHAR *p, *name = NtCurrentTeb()->Peb->ProcessParameters->ImagePathName.Buffer;
++        const char *env = getenv("WINE_ENABLE_DISCONNECT");
++        
++        /* Check for known games */ 
 +        if ((p = wcsrchr(name, '/')))
 +            name = p + 1;
 +        if ((p = wcsrchr(name, '\\')))
 +            name = p + 1;
-+        ret = (!wcsicmp(name, L"GenshinImpact.exe") ||
-+               !wcsicmp(name, L"StarRail.exe") ||
-+               !wcsicmp(name, L"YuanShen.exe") ||
++        ret = (!wcsicmp(name, L"StarRail.exe") ||
 +               !wcsicmp(name, L"ZenlessZoneZero.exe"));
 +        cache = ret;
++
++        /* Also check by env. var */
++        if (env && atoi(env))
++            ret = TRUE;
 +    }
 +    return ret;
 +}
  
  /***********************************************************************
   *      connect   (ws2_32.4)
-@@ -1272,6 +1291,18 @@ int WINAPI connect( SOCKET s, const struct sockaddr *addr, int len )
+@@ -1272,6 +1296,18 @@ int WINAPI connect( SOCKET s, const struct sockaddr *addr, int len )
      IO_STATUS_BLOCK io;
      HANDLE sync_event;
      NTSTATUS status;
@@ -59,5 +64,5 @@ index d4223e93bd1..3030d8df6bb 100644
      TRACE( "socket %#Ix, addr %s, len %d\n", s, debugstr_sockaddr(addr), len );
  
 -- 
-2.50.1
+2.51.0
 
