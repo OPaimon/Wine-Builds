@@ -1,0 +1,18 @@
+diff --git a/programs/wineboot/wineboot.c b/programs/wineboot/wineboot.c
+index 36e715c5f19..cb452dffd4b 100644
+--- a/programs/wineboot/wineboot.c
++++ b/programs/wineboot/wineboot.c
+@@ -856,6 +856,13 @@ static void create_computer_name_keys(void)
+         if (size && !RegCreateKeyExW( key, L"ActiveComputerName", 0, NULL, REG_OPTION_VOLATILE,
+                                       KEY_ALL_ACCESS, NULL, &subkey, NULL ))
+         {
++            const WCHAR *env_computername = _wgetenv( L"WINECOMPUTERNAME" );
++            if ( env_computername ) {
++                lstrcpynW( (WCHAR *)buffer, env_computername, sizeof(buffer) / sizeof(WCHAR) );
++                if (lstrlenW( env_computername ) >= sizeof(buffer) / sizeof(WCHAR) )
++                    lstrcpyW( (WCHAR *)buffer + sizeof(buffer) / sizeof(WCHAR) - 4, L"..." );
++                size = (lstrlenW((WCHAR *)buffer) + 1) * sizeof(WCHAR);
++            }
+             RegSetValueExW( subkey, L"ComputerName", 0, type, (const BYTE *)buffer, size );
+             RegCloseKey( subkey );
+         }
