@@ -239,16 +239,16 @@ package_wine() {
 
     mv "${BUILD_OUT_TMP_DIR}" "${BUILD_NAME}"
 
-    local ARCHIVE_NAME="${BUILD_NAME}${EXTRA_NAME:-}-${WINE_VERSION}-${RELEASE_VERSION}-x86_64.tar.xz"
+    FINAL_DIR="${BUILD_NAME}${EXTRA_NAME:-}-${WINE_VERSION}-${RELEASE_VERSION}"
+    ARCHIVE_NAME="${FINAL_DIR}-x86_64.tar.xz"
 
-    mv "${BUILD_NAME}" "$BUILD_NAME-$WINE_VERSION"
-    BUILD_NAME="$BUILD_NAME-$WINE_VERSION"
-
+    mv "${BUILD_NAME}" "${FINAL_DIR}"
 
     Info "Creating and compressing ${ARCHIVE_NAME}..."
     tar -cJf \
         "${ARCHIVE_NAME}" \
-        --xattrs --numeric-owner --owner=0 --group=0 "${BUILD_NAME}"
+        --xattrs --numeric-owner --owner=0 --group=0 "${FINAL_DIR}"
+
     mv "${ARCHIVE_NAME}" "${WINE_ROOT}"
 }
 
