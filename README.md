@@ -16,7 +16,22 @@ Spritz-Wine builds are available in all [an-anime-team](https://github.com/an-an
 - Backported and reworked many patches from Proton, mostly aiming controllers
 - Includes some QoL fixes for dropping inputs, random crashes and alt-tabbing.
 
-TO-DO: add env. vars to README
+## Useful environmental variables
+
+- Sync methods:
+  - `WINENTSYNC=0`: disables NTsync, fallbacks to fsync
+  - `WINEFSYNC=0`: disables fsync, fallbacks to esync
+  - `WINEESYNC=0`: disables esync, fallbacks to server sync
+
+- Spritz patches:
+  - `WINE_DISABLE_DISCONNECT=1`: disables the disconnecting trick when enabled by default
+  - `WINE_ENABLE_DISCONNECT=1`: enables the disconnecting trick
+  - `WINE_ENABLE_STEAM_STUB=1`: launches the executable using the `steam.exe` stub in the builds
+
+- Proton imported patches:
+  - `PROTON_PREFER_SDL=1`: uses SDL instead of hidraw, disabling it (already default)
+  - `PROTON_DISABLE_HIDRAW=1`: disables hidraw (already default)
+  - `PROTON_ENABLE_HIDRAW=1`: enables hidraw, fixes PlayStation glyphs not showing in some games
 
 ## Builds description
 
