@@ -36,7 +36,7 @@ _configuration() {
     WINE_VERSION=''
     STAGING_VERSION=''
     WINE_BRANCH="${WINE_BRANCH:-}"
-    RELEASE_VERSION='5'
+    RELEASE_VERSION='6'
     PATCHSET=''
 
     # Build configuration
@@ -159,6 +159,9 @@ build_wine() {
     XKBCOMMON_CFLAGS="$(pkg-config --static --cflags xkbcommon)"
     XKBCOMMON_LIBS="$(pkg-config --static --libs xkbcommon | sed -e 's| -l| -l:lib|').a"
     export XKBCOMMON_CFLAGS XKBCOMMON_LIBS
+    LIBXML2_CFLAGS="$(pkg-config --static --cflags libxml-2.0)"
+    LIBXML2_LIBS="$(pkg-config --static --libs libxml-2.0 | sed -e 's| -l| -l:lib|g').a"
+    export LIBXML2_CFLAGS LIBXML2_LIBS
 
     # Configure and build 64-bit
     "${BUILD_DIR}/wine/configure" "${WINE_BUILD_OPTIONS[@]}" "${WINE_64_BUILD_OPTIONS[@]}"
@@ -174,6 +177,9 @@ build_wine() {
         XKBCOMMON_CFLAGS="$(pkg-config --static --cflags xkbcommon)"
         XKBCOMMON_LIBS="$(pkg-config --static --libs xkbcommon | sed -e 's| -l| -l:lib|').a"
         export XKBCOMMON_CFLAGS XKBCOMMON_LIBS
+        LIBXML2_CFLAGS="$(pkg-config --static --cflags libxml-2.0)"
+        LIBXML2_LIBS="$(pkg-config --static --libs libxml-2.0 | sed -e 's| -l| -l:lib|g').a"
+        export LIBXML2_CFLAGS LIBXML2_LIBS
 
         # export I386_LIBS="-latomic" required for older fsync
 
